@@ -1,6 +1,15 @@
 // API configuration and utilities
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Debug: Log the API URL being used
+if (typeof window !== 'undefined') {
+  console.log('🔗 API URL:', API_URL);
+  console.log('📦 Environment:', {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NODE_ENV: process.env.NODE_ENV,
+  });
+}
+
 interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: Record<string, any>;
@@ -27,8 +36,22 @@ async function apiFetch<T>(endpoint: string, options?: FetchOptions): Promise<T>
     const response = await fetch(url, fetchOptions);
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `API error: ${response.status}`);
+      let errorMessage = 'Unknown error';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || `Server error: ${response.status}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      console.error(`❌ API Error:`, {
+        method,
+        endpoint,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        message: errorMessage,
+      });
+      throw new Error(errorMessage);
     }
 
     return await response.json();
